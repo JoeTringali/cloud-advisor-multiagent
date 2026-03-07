@@ -12,8 +12,8 @@ User Input
     │
     ▼
 ┌─────────────────────────────────────────────────┐
-│              Orchestrator Agent                  │
-│   (Routes queries, manages conversation flow)    │
+│              Orchestrator Agent                 │
+│   (Routes queries, manages conversation flow)   │
 └──────────┬──────────┬──────────┬────────────────┘
            │          │          │
            ▼          ▼          ▼
