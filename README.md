@@ -1,6 +1,7 @@
 # ☁️ Cloud Advisor Multi-Agent System
 
-A multi-agent AI system built with **Microsoft AutoGen** that helps organizations choose and design cloud computing solutions across AWS, Azure, and GCP — following each provider's best practices.
+A multi-agent AI system built with **Microsoft AutoGen** that helps organizations choose and design cloud computing solutions across AWS, Azure, and GCP, 
+following each provider's best practices.
 
 ---
 
