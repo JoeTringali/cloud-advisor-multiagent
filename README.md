@@ -142,8 +142,8 @@ cloud-advisor-multiagent/
 
 ```
 ╔══════════════════════════════════════════════════════╗
-║         ☁️  Cloud Advisor Multi-Agent System          ║
-║     Powered by AutoGen | AWS · Azure · GCP            ║
+║        Cloud Advisor Multi-Agent System              ║
+║     Powered by AutoGen | AWS · Azure · GCP           ║
 ╚══════════════════════════════════════════════════════╝
 
 Hello! I'm your Cloud Advisor. I have specialists for AWS, 
