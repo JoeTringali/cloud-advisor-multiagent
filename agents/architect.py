@@ -24,4 +24,4 @@ def create_architect() -> AssistantAgent:
             "Senior multi-cloud architect who synthesizes recommendations from AWS, Azure, "
             "and GCP experts into a coherent comparison and primary recommendation."
         ),
-    )s
+    )
