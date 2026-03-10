@@ -4,14 +4,14 @@ agents/architect.py
 Cloud Architect agent — synthesizes multi-cloud recommendations.
 """
 
-import autogen
+from autogen_agentchat.agents import AssistantAgent
 from config.llm_config import get_llm_config
 from utils.prompts import ARCHITECT_SYSTEM_PROMPT
 
 
-def create_architect() -> autogen.AssistantAgent:
+def create_architect() -> AssistantAgent:
     """Create and return the Cloud Architect agent."""
-    return autogen.AssistantAgent(
+    return AssistantAgent(
         name="Cloud_Architect",
         system_message=ARCHITECT_SYSTEM_PROMPT,
         llm_config=get_llm_config(),

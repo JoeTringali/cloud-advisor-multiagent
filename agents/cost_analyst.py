@@ -4,14 +4,14 @@ agents/cost_analyst.py
 Cost Analyst agent — provides FinOps and pricing estimates.
 """
 
-import autogen
+from autogen_agentchat.agents import AssistantAgent
 from config.llm_config import get_llm_config
 from utils.prompts import COST_ANALYST_SYSTEM_PROMPT
 
 
-def create_cost_analyst() -> autogen.AssistantAgent:
+def create_cost_analyst() -> AssistantAgent:
     """Create and return the Cost Analyst agent."""
-    return autogen.AssistantAgent(
+    return AssistantAgent(
         name="Cost_Analyst",
         system_message=COST_ANALYST_SYSTEM_PROMPT,
         llm_config=get_llm_config(),

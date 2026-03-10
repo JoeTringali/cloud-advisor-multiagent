@@ -4,14 +4,14 @@ agents/aws_expert.py
 AWS specialist agent — recommends AWS services and best practices.
 """
 
-import autogen
+from autogen_agentchat.agents import AssistantAgent
 from config.llm_config import get_llm_config
 from utils.prompts import AWS_EXPERT_SYSTEM_PROMPT
 
 
-def create_aws_expert() -> autogen.AssistantAgent:
+def create_aws_expert() -> AssistantAgent:
     """Create and return the AWS Expert agent."""
-    return autogen.AssistantAgent(
+    return AssistantAgent(
         name="AWS_Expert",
         system_message=AWS_EXPERT_SYSTEM_PROMPT,
         llm_config=get_llm_config(),

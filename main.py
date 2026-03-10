@@ -11,16 +11,22 @@ Usage:
 
 import os
 import sys
+import asyncio
 import argparse
 from dotenv import load_dotenv
 
 load_dotenv()
 
-import autogen
+# NEW: v0.7+ Imports
+from autogen_agentchat.agents import AssistantAgent, UserProxyAgent
+from autogen_agentchat.teams import SelectorGroupChat
+from autogen_agentchat.conditions import TextMentionTermination
+from autogen_ext.models.openai import OpenAIChatCompletionClient # Ensure you use the Client now
+
 from rich.console import Console
 from rich.panel import Panel
-from rich.markdown import Markdown
 
+# Local imports
 from agents.orchestrator import create_orchestrator
 from agents.aws_expert import create_aws_expert
 from agents.azure_expert import create_azure_expert
@@ -28,184 +34,72 @@ from agents.gcp_expert import create_gcp_expert
 from agents.architect import create_architect
 from agents.cost_analyst import create_cost_analyst
 from agents.summary import create_summary_agent
-from config.llm_config import get_max_rounds
 from config.agent_config import TERMINATION_KEYWORD
 from utils.prompts import WELCOME_MESSAGE
 from utils.report_generator import save_report, extract_report_from_chat
 
 console = Console()
 
-
-# ---------------------------------------------------------------------------
-# Termination condition
-# ---------------------------------------------------------------------------
-
-def is_termination_message(message: dict) -> bool:
-    """Return True when the Summary agent has finished its report."""
-    content = message.get("content", "")
-    return isinstance(content, str) and TERMINATION_KEYWORD in content
-
-
-# ---------------------------------------------------------------------------
-# Group chat builder
-# ---------------------------------------------------------------------------
-
-def build_group_chat(user_proxy: autogen.UserProxyAgent) -> autogen.GroupChat:
-    """Instantiate all agents and wire them into a GroupChat."""
-
-    orchestrator = create_orchestrator()
-    aws_expert = create_aws_expert()
-    azure_expert = create_azure_expert()
-    gcp_expert = create_gcp_expert()
-    architect = create_architect()
-    cost_analyst = create_cost_analyst()
-    summary_agent = create_summary_agent()
-
-    # Ordered speaker list — GroupChat will follow this sequence loosely.
-    # AutoGen's GroupChatManager will use the speaker_selection_method to decide
-    # who speaks next; "auto" lets the LLM decide based on context.
+async def build_team():
+    """Instantiate agents and wire them into a SelectorGroupChat Team."""
+    
+    # These creator functions MUST be updated to return 0.7+ Agents
+    # and use the new OpenAIChatCompletionClient inside them.
     agents = [
-        user_proxy,
-        orchestrator,
-        aws_expert,
-        azure_expert,
-        gcp_expert,
-        architect,
-        cost_analyst,
-        summary_agent,
+        create_orchestrator(),
+        create_aws_expert(),
+        create_azure_expert(),
+        create_gcp_expert(),
+        create_architect(),
+        create_cost_analyst(),
+        create_summary_agent(),
     ]
 
-    group_chat = autogen.GroupChat(
-        agents=agents,
-        messages=[],
-        max_round=get_max_rounds(),
-        speaker_selection_method="auto",
-        allow_repeat_speaker=True,
+    # The Termination condition replaces is_termination_message
+    termination = TextMentionTermination(TERMINATION_KEYWORD)
+
+    # NEW: SelectorGroupChat replaces GroupChat + GroupChatManager
+    # You need to pass a model_client here for the 'selector' to think
+    selector_model = OpenAIChatCompletionClient(model="gpt-4o")
+
+    team = SelectorGroupChat(
+        participants=agents,
+        model_client=selector_model,
+        termination_condition=termination,
     )
 
-    return group_chat
+    return team
 
-
-# ---------------------------------------------------------------------------
-# Interactive mode
-# ---------------------------------------------------------------------------
-
-def run_interactive() -> None:
-    """Run the full interactive multi-agent conversation."""
-
+async def run_interactive() -> None:
     console.print(Panel(WELCOME_MESSAGE, style="bold cyan", expand=False))
 
-    # UserProxyAgent acts as the human — it will prompt for input
-    user_proxy = autogen.UserProxyAgent(
-        name="User",
-        human_input_mode="ALWAYS",          # Always ask the user for input
-        max_consecutive_auto_reply=0,        # Never auto-reply — always wait for human
-        is_termination_msg=is_termination_message,
-        code_execution_config=False,
-        description="The human user seeking cloud architecture advice.",
-    )
+    team = await build_team()
 
-    group_chat = build_group_chat(user_proxy)
-
-    manager = autogen.GroupChatManager(
-        groupchat=group_chat,
-        llm_config=None,                     # Manager uses round-robin / auto selection
-        is_termination_msg=is_termination_message,
-    )
-
-    # Kick off the conversation — the Orchestrator will greet the user
     initial_message = (
         "Hello! Please greet the user, introduce the Cloud Advisor system and its specialists, "
         "and ask them what cloud computing challenge they need help with."
     )
 
-    user_proxy.initiate_chat(
-        manager,
-        message=initial_message,
-        clear_history=True,
-    )
+    # NEW: Run is now async and returns a TaskResult
+    async for message in team.run_stream(task=initial_message):
+        if message.content:
+            console.print(f"[bold]{message.source}:[/bold] {message.content}")
 
-    # -----------------------------------------------------------------------
-    # Post-conversation: save report
-    # -----------------------------------------------------------------------
-    if os.getenv("SAVE_REPORT", "true").lower() == "true":
-        report_text = extract_report_from_chat(group_chat.messages)
-        if report_text:
-            output_dir = os.getenv("REPORT_OUTPUT_DIR", "./reports")
-            filepath = save_report(report_text, output_dir)
-            console.print(
-                f"\n[bold green]✅ Report saved to:[/bold green] {filepath}"
-            )
-        else:
-            console.print(
-                "\n[yellow]ℹ️  No final report was generated in this session.[/yellow]"
-            )
+    # Report saving logic remains similar, but you extract from team history
+    # if os.getenv("SAVE_REPORT", "true").lower() == "true":
+    #    ... (Logic to extract from team history)
 
-    console.print("\n[bold cyan]Thank you for using Cloud Advisor. Goodbye! ☁️[/bold cyan]\n")
-
-
-# ---------------------------------------------------------------------------
-# Batch mode
-# ---------------------------------------------------------------------------
-
-def run_batch(requirements: str, save: bool = True) -> str:
-    """
-    Non-interactive batch mode: submit requirements, get a report back.
-
-    Args:
-        requirements: Natural-language description of the cloud requirements.
-        save: Whether to save the report to disk.
-
-    Returns:
-        The Markdown report string.
-    """
+async def run_batch(requirements: str, save: bool = True):
     console.print("[bold cyan]Running in BATCH mode...[/bold cyan]")
+    team = await build_team()
 
-    user_proxy = autogen.UserProxyAgent(
-        name="User",
-        human_input_mode="NEVER",            # Never prompt — fully automated
-        max_consecutive_auto_reply=0,
-        is_termination_msg=is_termination_message,
-        code_execution_config=False,
-        description="Automated client submitting cloud requirements for analysis.",
-    )
+    batch_prompt = f"Analyze these requirements and produce a report: {requirements}"
 
-    group_chat = build_group_chat(user_proxy)
-
-    manager = autogen.GroupChatManager(
-        groupchat=group_chat,
-        llm_config=None,
-        is_termination_msg=is_termination_message,
-    )
-
-    batch_prompt = f"""
-Please analyse the following cloud requirements and produce a complete advisory report.
-Go through each specialist (AWS, Azure, GCP), synthesize with the Cloud Architect,
-add cost estimates from the Cost Analyst, and finish with the Summary Agent's report.
-
-REQUIREMENTS:
-{requirements}
-"""
-
-    user_proxy.initiate_chat(
-        manager,
-        message=batch_prompt,
-        clear_history=True,
-    )
-
-    report_text = extract_report_from_chat(group_chat.messages)
-
-    if report_text and save:
-        output_dir = os.getenv("REPORT_OUTPUT_DIR", "./reports")
-        filepath = save_report(report_text, output_dir)
-        console.print(f"\n[bold green]✅ Report saved to:[/bold green] {filepath}")
-
-    return report_text
-
-
-# ---------------------------------------------------------------------------
-# CLI entry point
-# ---------------------------------------------------------------------------
+    # Use run() for batch if you don't need to stream the output
+    result = await team.run(task=batch_prompt)
+    
+    # Process result.messages for your report generator
+    return result
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
@@ -232,26 +126,15 @@ Examples:
         help="Do not save the report to disk.",
     )
     return parser.parse_args()
-
-
+    
 def main() -> None:
     args = parse_args()
-
-    mode = os.getenv("CONVERSATION_MODE", "interactive")
-
+    
+    # Use asyncio.run to kick off the async loop
     if args.batch:
-        run_batch(args.batch, save=not args.no_save)
-    elif mode == "batch":
-        # Batch mode via env var — read from stdin
-        console.print("[yellow]Batch mode: paste your requirements and press Ctrl+D (or Ctrl+Z on Windows):[/yellow]")
-        requirements = sys.stdin.read().strip()
-        if not requirements:
-            console.print("[red]Error: No requirements provided.[/red]")
-            sys.exit(1)
-        run_batch(requirements, save=not args.no_save)
+        asyncio.run(run_batch(args.batch, save=not args.no_save))
     else:
-        run_interactive()
-
+        asyncio.run(run_interactive())
 
 if __name__ == "__main__":
     main()
