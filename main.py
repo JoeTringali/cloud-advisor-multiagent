@@ -18,7 +18,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # NEW: v0.7+ Imports
-from autogen_agentchat.agents import AssistantAgent, UserProxyAgent
+from autogen_agentchat.agents import AssistantAgent
 from autogen_agentchat.teams import SelectorGroupChat
 from autogen_agentchat.conditions import TextMentionTermination
 from autogen_ext.models.openai import OpenAIChatCompletionClient # Ensure you use the Client now
