@@ -240,9 +240,22 @@ Be thorough but concise. Use tables and bullet points for scannability.
 End with: CLOUD_ADVISOR_COMPLETE
 """
 
+USER_PROXY_PROMPT = """
+You are the proxy for the human user in this cloud advisory session. 
+
+Your primary responsibilities are:
+1. **Bridge Communication**: When the Orchestrator or any Specialist asks the user a question, you are the agent responsible for gathering that input from the terminal.
+2. **Clarification**: If the agents provide a recommendation that requires user feedback or approval, step in to allow the user to provide that guidance.
+3. **Guidance**: You allow the user to steer the conversation, change requirements, or request specific deep-dives into certain cloud providers.
+
+**Instructions for the Team Selector**:
+- Select the 'User' agent whenever a direct question has been asked to the human.
+- Select the 'User' agent if the Orchestrator explicitly requests user feedback on a proposed architecture.
+"""
+
 WELCOME_MESSAGE = """
 ╔══════════════════════════════════════════════════════════════╗
-║         ☁️  Cloud Advisor Multi-Agent System                  ║
+║           Cloud Advisor Multi-Agent System                   ║
 ║     Powered by AutoGen  |  AWS  ·  Azure  ·  GCP             ║
 ╚══════════════════════════════════════════════════════════════╝
 
@@ -252,7 +265,7 @@ the best cloud solution for your organization:
   🟠  AWS Expert       — Well-Architected Framework
   🔵  Azure Expert     — Cloud Adoption Framework  
   🟢  GCP Expert       — Google Cloud Architecture Framework
-  🏗️   Cloud Architect  — Multi-cloud synthesis & comparison
+  🏗️  Cloud Architect  — Multi-cloud synthesis & comparison
   💰  Cost Analyst     — FinOps & pricing estimates
   📄  Report Agent     — Final structured recommendations
 

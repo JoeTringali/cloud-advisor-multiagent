@@ -34,13 +34,14 @@ from agents.gcp_expert import create_gcp_expert
 from agents.architect import create_architect
 from agents.cost_analyst import create_cost_analyst
 from agents.summary import create_summary_agent
+from agents.user import create_user
 from config.agent_config import TERMINATION_KEYWORD
 from utils.prompts import WELCOME_MESSAGE
 from utils.report_generator import save_report, extract_report_from_chat
 
 console = Console()
 
-async def build_team():
+async def build_team(interactive: bool = True):
     """Instantiate agents and wire them into a SelectorGroupChat Team."""
     
     # These creator functions MUST be updated to return 0.7+ Agents
@@ -54,6 +55,9 @@ async def build_team():
         create_cost_analyst(),
         create_summary_agent(),
     ]
+    # Only add the human bridge if we are in interactive mode
+    if interactive:
+        agents.insert(0, create_user())  # UserProxyAgent should be first to gather input early
 
     # The Termination condition replaces is_termination_message
     termination = TextMentionTermination(TERMINATION_KEYWORD)
@@ -75,31 +79,33 @@ async def run_interactive() -> None:
 
     team = await build_team()
 
-    initial_message = (
-        "Hello! Please greet the user, introduce the Cloud Advisor system and its specialists, "
-        "and ask them what cloud computing challenge they need help with."
-    )
+#    initial_message = (
+#        "Hello! Please greet the user, introduce the Cloud Advisor system and its specialists, "
+#        "and ask them what cloud computing challenge they need help with."
+#    )
 
-    # NEW: Run is now async and returns a TaskResult
-    async for message in team.run_stream(task=initial_message):
-        if message.content:
-            console.print(f"[bold]{message.source}:[/bold] {message.content}")
+#    # NEW: Run is now async and returns a TaskResult
+#    async for message in team.run_stream(task=initial_message):
+#        if message.content:
+#            console.print(f"[bold]{message.source}:[/bold] {message.content}")
 
-    # Report saving logic remains similar, but you extract from team history
-    # if os.getenv("SAVE_REPORT", "true").lower() == "true":
-    #    ... (Logic to extract from team history)
+#    # Report saving logic remains similar, but you extract from team history
+#    # if os.getenv("SAVE_REPORT", "true").lower() == "true":
+#    #    ... (Logic to extract from team history)
+    return None
 
 async def run_batch(requirements: str, save: bool = True):
-    console.print("[bold cyan]Running in BATCH mode...[/bold cyan]")
-    team = await build_team()
-
-    batch_prompt = f"Analyze these requirements and produce a report: {requirements}"
-
-    # Use run() for batch if you don't need to stream the output
-    result = await team.run(task=batch_prompt)
-    
-    # Process result.messages for your report generator
-    return result
+#    console.print("[bold cyan]Running in BATCH mode...[/bold cyan]")
+#    team = await build_team()
+#
+#    batch_prompt = f"Analyze these requirements and produce a report: {requirements}"
+#
+#    # Use run() for batch if you don't need to stream the output
+#    result = await team.run(task=batch_prompt)
+#    
+#    # Process result.messages for your report generator
+#    return result
+    return None
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
