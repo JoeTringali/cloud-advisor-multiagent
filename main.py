@@ -59,8 +59,11 @@ async def build_team(interactive: bool = True):
     if interactive:
         agents.append(create_user())  # UserProxyAgent should be first to gather input early
 
-    # The Termination condition replaces is_termination_message
-    termination = TextMentionTermination(TERMINATION_KEYWORD)
+    user_exit_condition = TextMentionTermination("quit") | TextMentionTermination("exit")
+    system_completion_condition = TextMentionTermination(TERMINATION_KEYWORD)
+    
+    # Combined condition: Stop if user wants to quit OR if agents finish the task
+    termination = user_exit_condition | system_completion_condition
 
     # NEW: SelectorGroupChat replaces GroupChat + GroupChatManager
     # You need to pass a model_client here for the 'selector' to think
