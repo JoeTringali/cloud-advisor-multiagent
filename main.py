@@ -22,6 +22,7 @@ from autogen_agentchat.agents import AssistantAgent
 from autogen_agentchat.teams import SelectorGroupChat
 from autogen_agentchat.conditions import TextMentionTermination
 from autogen_ext.models.openai import OpenAIChatCompletionClient # Ensure you use the Client now
+from autogen_agentchat.messages import TextMessage, StopMessage, MultiModalMessage
 
 from rich.console import Console
 from rich.panel import Panel
@@ -109,8 +110,17 @@ async def run_interactive() -> None:
         if is_first_message:
             is_first_message = False
             continue
-        if message.content:
-            console.print(f"[bold]{message.source}:[/bold] {message.content}")
+        
+        # Use TextMessage instead of ChatMessage for the instance check
+        if isinstance(message, TextMessage):
+            console.print(f"\n[bold]{message.source}:[/bold] {message.content}")
+        
+        # Handle multi-modal messages if your agents might send images/files
+        elif isinstance(message, MultiModalMessage):
+            console.print(f"\n[bold]{message.source}:[/bold] [Multi-modal content received]")
+
+        elif isinstance(message, StopMessage):
+            console.print("\n[italic yellow]Agents have reached a stopping point.[/italic yellow]")
 
     # Report saving logic remains similar, but you extract from team history
     # if os.getenv("SAVE_REPORT", "true").lower() == "true":
