@@ -17,7 +17,6 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# NEW: v0.7+ Imports
 from autogen_agentchat.agents import AssistantAgent
 from autogen_agentchat.teams import SelectorGroupChat
 from autogen_agentchat.conditions import TextMentionTermination
@@ -27,7 +26,6 @@ from autogen_agentchat.messages import TextMessage, StopMessage, MultiModalMessa
 from rich.console import Console
 from rich.panel import Panel
 
-# Local imports
 from agents.orchestrator import create_orchestrator
 from agents.aws_expert import create_aws_expert
 from agents.azure_expert import create_azure_expert
@@ -45,8 +43,6 @@ console = Console()
 async def build_team(interactive: bool = True):
     """Instantiate agents and wire them into a SelectorGroupChat Team."""
     
-    # These creator functions MUST be updated to return 0.7+ Agents
-    # and use the new OpenAIChatCompletionClient inside them.
     agents = [
         create_orchestrator(),
         create_aws_expert(),
@@ -66,9 +62,7 @@ async def build_team(interactive: bool = True):
     # Combined condition: Stop if user wants to quit OR if agents finish the task
     termination = user_exit_condition | system_completion_condition
 
-    # NEW: SelectorGroupChat replaces GroupChat + GroupChatManager
-    # You need to pass a model_client here for the 'selector' to think
-    selector_model = OpenAIChatCompletionClient(model="gpt-4o")
+    selector_model = OpenAIChatCompletionClient(model=os.getenv("LLM_MODEL", "gpt-4o"))
 
     team = SelectorGroupChat(
         participants=agents,
@@ -83,27 +77,11 @@ async def run_interactive() -> None:
 
     team = await build_team()
 
-#    initial_message = (
-#        "Hello! Please greet the user, introduce the Cloud Advisor system and its specialists, "
-#        "and ask them what cloud computing challenge they need help with."
-#    )
-#    initial_message = (
-#        "What cloud computing challenge can we help you with today?"
-#    ) 
-    # Change the initial_message from a question to an instruction
-    # This tells the SelectorGroupChat what the first action should be.
     instruction = (
         "Orchestrator, please greet the user, introduce the team briefly, "
         "and ask: 'What cloud computing challenge can we help you with today?'"
     )
-#    console.print("\n[bold yellow]Cloud Advisor:[/bold yellow] What cloud computing challenge can we help you with today?")
-#    user_challenge = console.input("[bold green]user:[/bold green] ").strip()
 
-#    if not user_challenge:
-#        console.print("[red]No input provided. Exiting...[/red]")
-#        return
-
-    # NEW: Run is now async and returns a TaskResult
     is_first_message = True
     async for message in team.run_stream(task=instruction):
         # Skip printing the instruction itself
@@ -111,7 +89,7 @@ async def run_interactive() -> None:
             is_first_message = False
             continue
         
-        # Use TextMessage instead of ChatMessage for the instance check
+        # Handle TextMessage messages
         if isinstance(message, TextMessage):
             console.print(f"\n[bold]{message.source}:[/bold] {message.content}")
         
@@ -127,17 +105,36 @@ async def run_interactive() -> None:
     #    ... (Logic to extract from team history)
 
 async def run_batch(requirements: str, save: bool = True):
-    console.print("[bold cyan]Running in BATCH mode...[/bold cyan]")
+    console.print(f"[bold cyan]Running in BATCH mode...[/bold cyan]")
+
     team = await build_team(interactive=False)
-#
+
 #    batch_prompt = f"Analyze these requirements and produce a report: {requirements}"
-#
-#    # Use run() for batch if you don't need to stream the output
-#    result = await team.run(task=batch_prompt)
-#    
-#    # Process result.messages for your report generator
-#    return result
-    return None
+    batch_prompt = (
+        f"Orchestrator, please coordinate the team to analyze these requirements: {requirements}. "
+        f"Once the analysis is complete, have the Summary Agent produce a final structured report. "
+        f"End your final response with {TERMINATION_KEYWORD}."
+    )
+
+    result = await team.run(task=batch_prompt)
+
+    # Iterate through the messages in the TaskResult to show the progress in the console
+    for message in result.messages:
+        if isinstance(message, TextMessage):
+            console.print(f"\n[bold]{message.source}:[/bold] {message.content}")
+
+    # Report saving logic
+    if save:
+        console.print("\n[bold green]Generating final report...[/bold green]")
+        # extract_report_from_chat can now process result.messages directly
+        report_content = extract_report_from_chat(result.messages)
+        if report_content:
+            file_path = save_report(report_content)
+            console.print(f"\n[bold green]Report saved to:[/bold green] {file_path}")
+        else:
+            console.print("\n[bold red]Failed to extract report content from the conversation.[/bold red]")
+
+    return result
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
@@ -168,7 +165,6 @@ Examples:
 def main() -> None:
     args = parse_args()
     
-    # Use asyncio.run to kick off the async loop
     if args.batch:
         asyncio.run(run_batch(args.batch, save=not args.no_save))
     else:
