@@ -57,7 +57,7 @@ async def build_team(interactive: bool = True):
     ]
     # Only add the human bridge if we are in interactive mode
     if interactive:
-        agents.insert(0, create_user())  # UserProxyAgent should be first to gather input early
+        agents.append(create_user())  # UserProxyAgent should be first to gather input early
 
     # The Termination condition replaces is_termination_message
     termination = TextMentionTermination(TERMINATION_KEYWORD)
@@ -83,20 +83,39 @@ async def run_interactive() -> None:
 #        "Hello! Please greet the user, introduce the Cloud Advisor system and its specialists, "
 #        "and ask them what cloud computing challenge they need help with."
 #    )
+#    initial_message = (
+#        "What cloud computing challenge can we help you with today?"
+#    ) 
+    # Change the initial_message from a question to an instruction
+    # This tells the SelectorGroupChat what the first action should be.
+    instruction = (
+        "Orchestrator, please greet the user, introduce the team briefly, "
+        "and ask: 'What cloud computing challenge can we help you with today?'"
+    )
+#    console.print("\n[bold yellow]Cloud Advisor:[/bold yellow] What cloud computing challenge can we help you with today?")
+#    user_challenge = console.input("[bold green]user:[/bold green] ").strip()
 
-#    # NEW: Run is now async and returns a TaskResult
-#    async for message in team.run_stream(task=initial_message):
-#        if message.content:
-#            console.print(f"[bold]{message.source}:[/bold] {message.content}")
+#    if not user_challenge:
+#        console.print("[red]No input provided. Exiting...[/red]")
+#        return
 
-#    # Report saving logic remains similar, but you extract from team history
-#    # if os.getenv("SAVE_REPORT", "true").lower() == "true":
-#    #    ... (Logic to extract from team history)
-    return None
+    # NEW: Run is now async and returns a TaskResult
+    is_first_message = True
+    async for message in team.run_stream(task=instruction):
+        # Skip printing the instruction itself
+        if is_first_message:
+            is_first_message = False
+            continue
+        if message.content:
+            console.print(f"[bold]{message.source}:[/bold] {message.content}")
+
+    # Report saving logic remains similar, but you extract from team history
+    # if os.getenv("SAVE_REPORT", "true").lower() == "true":
+    #    ... (Logic to extract from team history)
 
 async def run_batch(requirements: str, save: bool = True):
-#    console.print("[bold cyan]Running in BATCH mode...[/bold cyan]")
-#    team = await build_team()
+    console.print("[bold cyan]Running in BATCH mode...[/bold cyan]")
+    team = await build_team(interactive=False)
 #
 #    batch_prompt = f"Analyze these requirements and produce a report: {requirements}"
 #
