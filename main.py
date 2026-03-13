@@ -109,14 +109,13 @@ async def run_batch(requirements: str, save: bool = True):
 
     team = await build_team(interactive=False)
 
-#    batch_prompt = f"Analyze these requirements and produce a report: {requirements}"
-    batch_prompt = (
+    instruction = (
         f"Orchestrator, please coordinate the team to analyze these requirements: {requirements}. "
         f"Once the analysis is complete, have the Summary Agent produce a final structured report. "
         f"End your final response with {TERMINATION_KEYWORD}."
     )
 
-    result = await team.run(task=batch_prompt)
+    result = await team.run(task=instruction)
 
     # Iterate through the messages in the TaskResult to show the progress in the console
     for message in result.messages:
