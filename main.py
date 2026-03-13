@@ -82,8 +82,12 @@ async def run_interactive() -> None:
         "and ask: 'What cloud computing challenge can we help you with today?'"
     )
 
+    history = []
     is_first_message = True
     async for message in team.run_stream(task=instruction):
+        # Add every message to history for the report generator
+        history.append(message)
+
         # Skip printing the instruction itself
         if is_first_message:
             is_first_message = False
@@ -100,9 +104,18 @@ async def run_interactive() -> None:
         elif isinstance(message, StopMessage):
             console.print("\n[italic yellow]Agents have reached a stopping point.[/italic yellow]")
 
-    # Report saving logic remains similar, but you extract from team history
-    # if os.getenv("SAVE_REPORT", "true").lower() == "true":
-    #    ... (Logic to extract from team history)
+    # Extract from team history)
+    if os.getenv("SAVE_REPORT", "true").lower() == "true":
+        console.print("\n[bold green]Interactive session ended. Generating final report...[/bold green]")
+        
+        # Pass the history list we collected during the stream
+        report_content = extract_report_from_chat(history)
+        
+        if report_content:
+            file_path = save_report(report_content)
+            console.print(f"[bold green]Report saved to:[/bold green] {file_path}")
+        else:
+            console.print("[bold yellow]No formal report was extracted from the conversation history.[/bold yellow]")
 
 async def run_batch(requirements: str, save: bool = True):
     console.print(f"[bold cyan]Running in BATCH mode...[/bold cyan]")

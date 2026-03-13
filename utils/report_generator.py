@@ -38,45 +38,29 @@ def save_report(report_text: str, output_dir: str = "./reports") -> str:
     return filepath
 
 
-#def extract_report_from_chat(chat_history: list) -> str:
-#    """
-#    Extract the last message containing the report markers from chat history.
-#
-#    Args:
-#        chat_history: List of AutoGen message dicts.
-#
-#    Returns:
-#        The report text, or an empty string if not found.
-#    """
-#    for message in reversed(chat_history):
-#        content = message.content
-#        if isinstance(content, str) and "Cloud Architecture Advisory Report" in content:
-#            return content
-#    return ""
-
-#=======================================================================
 def extract_report_from_chat(messages):
     """
     Extract the last message containing the report markers from chat history.
-
-    Args:
-        messages: List of AutoGen messages.
-
-    Returns:
-        The report text, or an empty string if not found.
     """
     report_content = ""
     
+    # Reverse the list to find the most recent summary/report
     for message in reversed(messages):
-        console.print(f"\n[bold]Debug:{message.source}:[/bold] {message.content}")
+        # FIX: Check if the object has 'source' and 'content' 
+        # (This skips the TaskResult object at the end of the stream)
+        if not hasattr(message, "source") or not hasattr(message, "content"):
+            continue
+
+        # Debug print now safe
+        # console.print(f"\n[bold]Debug:{message.source}:[/bold] {message.content[:50]}...")
+
         if isinstance(message, TextMessage):
             content = message.content
-#            
-#            # Look for your summary agent or specific keywords
-#            if message.source == "Summary_Agent" or "## Final Report" in content:
-#                report_content = content
-
-    report_content = content
+            
+            # Logic: Look for the Summary Agent's final output
+            # or a specific Markdown header
+            if message.source == "Summary_Agent" or "## " in content:
+                report_content = content
+                break # Stop once we find the final report
                 
     return report_content
-#=======================================================================
