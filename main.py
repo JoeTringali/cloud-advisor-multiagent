@@ -20,7 +20,7 @@ load_dotenv()
 from autogen_agentchat.agents import AssistantAgent
 from autogen_agentchat.teams import SelectorGroupChat
 from autogen_agentchat.conditions import TextMentionTermination
-from autogen_ext.models.openai import OpenAIChatCompletionClient # Ensure you use the Client now
+from autogen_ext.models.openai import OpenAIChatCompletionClient
 from autogen_agentchat.messages import TextMessage, StopMessage, MultiModalMessage
 
 from rich.console import Console
@@ -54,7 +54,7 @@ async def build_team(interactive: bool = True):
     ]
     # Only add the human bridge if we are in interactive mode
     if interactive:
-        agents.append(create_user())  # UserProxyAgent should be first to gather input early
+        agents.append(create_user())
 
     user_exit_condition = TextMentionTermination("quit") | TextMentionTermination("exit")
     system_completion_condition = TextMentionTermination(TERMINATION_KEYWORD)
@@ -125,7 +125,6 @@ async def run_batch(requirements: str, save: bool = True):
     instruction = (
         f"Orchestrator, please coordinate the team to analyze these requirements: {requirements}. "
         f"Once the analysis is complete, have the Summary Agent produce a final structured report. "
-        #"The Orchestrator must end the conversation with the completion keyword once the report is visible."
     )
 
     history = []

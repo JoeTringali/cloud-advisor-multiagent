@@ -28,12 +28,10 @@ def save_report(report_text: str, output_dir: str = "./reports") -> str:
     filename = f"cloud_advisory_report_{timestamp}.md"
     filepath = os.path.join(output_dir, filename)
 
-    # Strip the termination keyword if present
-    # clean_report = report_text.replace("CLOUD_ADVISOR_COMPLETE", "").strip()
     phrases_to_remove = [
         "Completion keyword: **completion**",
         "Completion keyword: completion",
-        "CLOUD_ADVISOR_COMPLETE" # Good to keep this here too just in case
+        "CLOUD_ADVISOR_COMPLETE"
     ]
     clean_report = report_text
     for phrase in phrases_to_remove:
@@ -57,9 +55,6 @@ def extract_report_from_chat(messages):
         # (This skips the TaskResult object at the end of the stream)
         if not hasattr(message, "source") or not hasattr(message, "content"):
             continue
-
-        # Debug print now safe
-        # console.print(f"\n[bold]Debug:{message.source}:[/bold] {message.content[:50]}...")
 
         if isinstance(message, TextMessage):
             content = message.content

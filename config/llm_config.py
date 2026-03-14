@@ -9,7 +9,6 @@ import os
 from typing import Union
 from dotenv import load_dotenv
 
-# NEW: Import the specific clients for the 0.7+ architecture
 from autogen_ext.models.openai import OpenAIChatCompletionClient, AzureOpenAIChatCompletionClient
 
 load_dotenv()
@@ -25,7 +24,6 @@ def get_model_client() -> Union[OpenAIChatCompletionClient, AzureOpenAIChatCompl
     max_tokens = int(os.getenv("LLM_MAX_TOKENS", "4096"))
 
     if use_azure:
-        # NEW: Return the Azure-specific client object
         return AzureOpenAIChatCompletionClient(
             model=os.getenv("AZURE_OPENAI_DEPLOYMENT", "gpt-4o"),
             api_key=os.getenv("AZURE_OPENAI_API_KEY"),
@@ -40,7 +38,6 @@ def get_model_client() -> Union[OpenAIChatCompletionClient, AzureOpenAIChatCompl
             max_tokens=max_tokens,
         )
     else:
-        # NEW: Return the standard OpenAI client object
         return OpenAIChatCompletionClient(
             model=model,
             api_key=os.getenv("OPENAI_API_KEY"),
