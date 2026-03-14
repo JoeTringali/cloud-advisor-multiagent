@@ -30,13 +30,20 @@ def save_report(report_text: str, output_dir: str = "./reports") -> str:
 
     # Strip the termination keyword if present
     # clean_report = report_text.replace("CLOUD_ADVISOR_COMPLETE", "").strip()
+    phrases_to_remove = [
+        "Completion keyword: **completion**",
+        "Completion keyword: completion",
+        "CLOUD_ADVISOR_COMPLETE" # Good to keep this here too just in case
+    ]
     clean_report = report_text
+    for phrase in phrases_to_remove:
+        clean_report = clean_report.replace(phrase, "")
+    clean_report = clean_report.strip()
 
     with open(filepath, "w", encoding="utf-8") as f:
         f.write(clean_report)
 
     return filepath
-
 
 def extract_report_from_chat(messages):
     """

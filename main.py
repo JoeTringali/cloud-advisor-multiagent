@@ -104,7 +104,7 @@ async def run_interactive() -> None:
         elif isinstance(message, StopMessage):
             console.print("\n[italic yellow]Agents have reached a stopping point.[/italic yellow]")
 
-    # Extract from team history)
+    # Extract from team history
     if os.getenv("SAVE_REPORT", "true").lower() == "true":
         console.print("\n[bold green]Interactive session ended. Generating final report...[/bold green]")
         
@@ -125,28 +125,38 @@ async def run_batch(requirements: str, save: bool = True):
     instruction = (
         f"Orchestrator, please coordinate the team to analyze these requirements: {requirements}. "
         f"Once the analysis is complete, have the Summary Agent produce a final structured report. "
-        f"End your final response with {TERMINATION_KEYWORD}."
+        #"The Orchestrator must end the conversation with the completion keyword once the report is visible."
     )
 
-    result = await team.run(task=instruction)
+    history = []
+    async for message in team.run_stream(task=instruction):
+        # Only add actual messages to history, skip the final TaskResult
+        if hasattr(message, "source") and hasattr(message, "content"):
+            history.append(message)        
 
-    # Iterate through the messages in the TaskResult to show the progress in the console
-    for message in result.messages:
+        # Handle TextMessage messages
         if isinstance(message, TextMessage):
             console.print(f"\n[bold]{message.source}:[/bold] {message.content}")
+        
+        # Handle multi-modal messages if your agents might send images/files
+        elif isinstance(message, MultiModalMessage):
+            console.print(f"\n[bold]{message.source}:[/bold] [Multi-modal content received]")
 
-    # Report saving logic
+        elif isinstance(message, StopMessage):
+            console.print("\n[italic yellow]Agents have reached a stopping point.[/italic yellow]")
+
+    # Extract from team history
     if save:
         console.print("\n[bold green]Generating final report...[/bold green]")
-        # extract_report_from_chat can now process result.messages directly
-        report_content = extract_report_from_chat(result.messages)
+        
+        # Pass the history list we collected during the stream
+        report_content = extract_report_from_chat(history)
+        
         if report_content:
             file_path = save_report(report_content)
-            console.print(f"\n[bold green]Report saved to:[/bold green] {file_path}")
+            console.print(f"[bold green]Report saved to:[/bold green] {file_path}")
         else:
-            console.print("\n[bold red]Failed to extract report content from the conversation.[/bold red]")
-
-    return result
+            console.print("[bold yellow]No formal report was extracted from the conversation history.[/bold yellow]")
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
