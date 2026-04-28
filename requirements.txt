@@ -6,3 +6,4 @@ autogen-agentchat>=0.7.5
 autogen-core>=0.7.5
 autogen-ext>=0.7.5
 openai>=2.26.0
+tiktoken>=0.12.0

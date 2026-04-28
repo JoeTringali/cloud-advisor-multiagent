@@ -42,7 +42,7 @@ console = Console()
 
 async def build_team(interactive: bool = True):
     """Instantiate agents and wire them into a SelectorGroupChat Team."""
-    
+
     agents = [
         create_orchestrator(),
         create_aws_expert(),
@@ -52,17 +52,18 @@ async def build_team(interactive: bool = True):
         create_cost_analyst(),
         create_summary_agent(),
     ]
+
     # Only add the human bridge if we are in interactive mode
     if interactive:
         agents.append(create_user())
 
-    user_exit_condition = TextMentionTermination("quit") | TextMentionTermination("exit")
-    system_completion_condition = TextMentionTermination(TERMINATION_KEYWORD)
-    
-    # Combined condition: Stop if user wants to quit OR if agents finish the task
-    termination = user_exit_condition | system_completion_condition
+    user_exit_condition   = TextMentionTermination("quit") | TextMentionTermination("exit")
+    system_done_condition = TextMentionTermination(TERMINATION_KEYWORD)
+    termination = user_exit_condition | system_done_condition
 
-    selector_model = OpenAIChatCompletionClient(model=os.getenv("LLM_MODEL", "gpt-4o"))
+    selector_model = OpenAIChatCompletionClient(
+        model=os.getenv("LLM_MODEL", "gpt-4o")
+    )
 
     team = SelectorGroupChat(
         participants=agents,
@@ -71,6 +72,7 @@ async def build_team(interactive: bool = True):
     )
 
     return team
+
 
 async def run_interactive() -> None:
     console.print(Panel(WELCOME_MESSAGE, style="bold cyan", expand=False))
@@ -84,38 +86,32 @@ async def run_interactive() -> None:
 
     history = []
     is_first_message = True
+
     async for message in team.run_stream(task=instruction):
-        # Add every message to history for the report generator
         history.append(message)
 
-        # Skip printing the instruction itself
         if is_first_message:
             is_first_message = False
             continue
-        
-        # Handle TextMessage messages
+
         if isinstance(message, TextMessage):
             console.print(f"\n[bold]{message.source}:[/bold] {message.content}")
-        
-        # Handle multi-modal messages if your agents might send images/files
         elif isinstance(message, MultiModalMessage):
             console.print(f"\n[bold]{message.source}:[/bold] [Multi-modal content received]")
-
         elif isinstance(message, StopMessage):
             console.print("\n[italic yellow]Agents have reached a stopping point.[/italic yellow]")
 
-    # Extract from team history
     if os.getenv("SAVE_REPORT", "true").lower() == "true":
         console.print("\n[bold green]Interactive session ended. Generating final report...[/bold green]")
-        
-        # Pass the history list we collected during the stream
         report_content = extract_report_from_chat(history)
-        
         if report_content:
             file_path = save_report(report_content)
             console.print(f"[bold green]Report saved to:[/bold green] {file_path}")
         else:
-            console.print("[bold yellow]No formal report was extracted from the conversation history.[/bold yellow]")
+            console.print(
+                "[bold yellow]No formal report was extracted from the conversation history.[/bold yellow]"
+            )
+
 
 async def run_batch(requirements: str, save: bool = True):
     console.print(f"[bold cyan]Running in BATCH mode...[/bold cyan]")
@@ -128,34 +124,29 @@ async def run_batch(requirements: str, save: bool = True):
     )
 
     history = []
-    async for message in team.run_stream(task=instruction):
-        # Only add actual messages to history, skip the final TaskResult
-        if hasattr(message, "source") and hasattr(message, "content"):
-            history.append(message)        
 
-        # Handle TextMessage messages
+    async for message in team.run_stream(task=instruction):
+        if hasattr(message, "source") and hasattr(message, "content"):
+            history.append(message)
+
         if isinstance(message, TextMessage):
             console.print(f"\n[bold]{message.source}:[/bold] {message.content}")
-        
-        # Handle multi-modal messages if your agents might send images/files
         elif isinstance(message, MultiModalMessage):
             console.print(f"\n[bold]{message.source}:[/bold] [Multi-modal content received]")
-
         elif isinstance(message, StopMessage):
             console.print("\n[italic yellow]Agents have reached a stopping point.[/italic yellow]")
 
-    # Extract from team history
     if save:
         console.print("\n[bold green]Generating final report...[/bold green]")
-        
-        # Pass the history list we collected during the stream
         report_content = extract_report_from_chat(history)
-        
         if report_content:
             file_path = save_report(report_content)
             console.print(f"[bold green]Report saved to:[/bold green] {file_path}")
         else:
-            console.print("[bold yellow]No formal report was extracted from the conversation history.[/bold yellow]")
+            console.print(
+                "[bold yellow]No formal report was extracted from the conversation history.[/bold yellow]"
+            )
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
@@ -166,7 +157,7 @@ Examples:
   python main.py
   python main.py --batch "Healthcare startup needs HIPAA-compliant ML platform"
   python main.py --batch "Enterprise migrating 200 VMs from on-prem to cloud" --no-save
-        """,
+""",
     )
     parser.add_argument(
         "--batch",
@@ -182,14 +173,15 @@ Examples:
         help="Do not save the report to disk.",
     )
     return parser.parse_args()
-    
+
+
 def main() -> None:
     args = parse_args()
-    
     if args.batch:
         asyncio.run(run_batch(args.batch, save=not args.no_save))
     else:
         asyncio.run(run_interactive())
+
 
 if __name__ == "__main__":
     main()
